@@ -1,0 +1,171 @@
+export PROJECT_ID=santest-1
+export PREFIX=sanalt
+gcloud config set project ${PROJECT_ID}
+
+gcloud beta certificate-manager certificates create ${PREFIX}-lb-certificate \
+    --certificate-file=be-client.cert \
+    --private-key-file=be-client.key \
+    --scope=CLIENT_AUTH \
+    --location=global
+cat << EOF > backend-auth-config.yaml
+name: projects/${PROJECT_ID}/locations/global/backendAuthenticationConfigs/${PREFIX}-backend-auth-config
+trustConfig: projects/${PROJECT_ID}/locations/global/trustConfigs/${PREFIX}-trust-config-int-1
+clientCertificate: projects/${PROJECT_ID}/locations/global/certificates/${PREFIX}-lb-certificate
+wellKnownRoots: PUBLIC_ROOTS
+EOF
+
+cat ./backend-auth-config.yaml
+
+gcloud beta network-security backend-authentication-configs describe ${PREFIX}-backend-auth-config --location=global
+gcloud beta compute backend-services export ${PREFIX}-app-bs \
+    --destination=backend-config.yaml \
+    --global
+
+gcloud compute backend-services list | grep ${PREFIX}
+gcloud compute backend-services describe sannew-app-bs --global
+cat << EOF >> backend-config.yaml
+tlsSettings:
+    authenticationConfig: //networksecurity.googleapis.com/projects/${PROJECT_ID}/locations/global/backendAuthenticationConfigs/${PREFIX}-backend-auth-config
+    sni: examplebackeendsvc.com
+    subjectAltNames:
+    - dnsName: examplebackeendsvc.com
+    - dnsName: api.examplebackeendsvc.com
+EOF
+
+gcloud beta compute backend-services import ${PREFIX}-app-bs \
+    --source=backend-config.yaml \
+    --global
+
+
+cat > be-server.key << EOF
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+6zOGF1oqp4jX
+WY06lvJezAboUWjZ6wg6a1NzMBfdYZhM/iMBSsX2kUzpOqabExfJ+Yl5Nk4c55mp
+1c5yHHcIMuO59Mqhb++RQ2g/VLQTXHI5XGHRJIH7fPAAn+rAdFdN8wBzFwlfxDSG
+cinL76MF59O8TzpSvGmfXQciauzojBY+V17r2PfPPZO3l2Hz+sAngXJu0idECzQE
+tB8i1pcXbfjL1nv/iO+Cd7F9eDvpJsUo0EQ9a4Pjz59gIUt84iISVIOnSMYBQarT
+spze/Q63xiZxAvxi5wRBEZLDs95LEZg6TF9bNc2vyeM8ytgKW+Z2u9aolhWdNbpZ
+G9vrARk7AgMBAAECggEACAN5qVZf7QFqOivNRJkjDufpHvrnzUR9wcH71zkSD13y
+KsJ8t/2qUIlUcp0JHYzlceSyU1mnBAnpRm/YggFVh7e8ckjm8R7F2Kbn1cdZkE8l
+kOh38fONLIACgkGJdM7iqT1wFo9Fep+9hVUpEaEl38YVekZ9urejhqe8zcIyM9KM
+PxA5GPDeiBmFvNGpYYaASpgYE68Opw2Q2JvjMyc1cJm4Fra13VXGNURpuP6iU/qH
+efNWwbIUz04KO5xPjIg58PR0ycJfqXmUnzqPjm5D/GYsi9cjctzCk/UBZW0Jb4xh
+r/8VU34mmaJpu9rGcWz61DcVhcXtLKzvPJIB0IitCQKBgQDfY3s6XU1goDJFtHFk
+f+hKzKwsGWwyXslNulIgh6K2WZztATAcq8+NC23GkAlN/SzeSjn+Df6hcbp0AqnC
+uBeFddbAS97V/RI9M/EA3Tzlb4tvuYK3kiRmwpxM7JBXJxu12ObPuECIgT3+D7zk
+n6A4i3l/57B3qPx31mQnzD5K8wKBgQDaykBHYMbrrA2pdg8n03jsCCxNsNHkwSD2
++qMn//eQigck+Kg1+NHrC9G5aUQ+4DePYH0cyN6rMUdLsL0NgZsHNpjeR1f/0fCa
+FEjpW7ZZ1H2xZTdnouhLr+nFHCqhCPVRybHfnetZtOWSymRFE4ZohchH0JE2yNSu
+xerORFf6mQKBgB72rxH79Mm76rv2svD3Ob+Edyj1rSWeNdDsTo3rvwX/jdzcGUsg
+FXi7aM/pDyEcQqfdKgSo8+500R9bbyRqV/hLySSGX7DRj0GkfXddMx+qQm2ODSxc
+uWb0+q0+7RLnfNPL6NJJ+8fwAiPBErGt3ot36bNs7ezoI3aI5QEPMmM5AoGAYyNB
+/RXdDOzpQ+A6/dDU+h659HoqoXzhcwge5gEWLGhe1GHX1pzogZjZbypDwjnW8yDF
+kEV0oB20MJflEjmoBZy3qACr3z9Bxo9qelMUTZ/7VGaItG0c1S7gvnAE4PMuNeEu
+uCTWf894Nwt+Y851GOeF2QSoyCo4NPl5a/2L4AECgYEAypqvXfIfVvnTW2KXJzIk
+9ANhOcQz/tOO5XgPrZ16pSPyJqo5BA3rHd1Kq+/lRFaKxWl111arHXoquAtwiORu
+f6E8WWQSnIgf0+dCNYoGkWGWuoxtpO1aZ37tbzlkU9AmcUt/gLPyUyfw080gw9/w
+FLuQkFmzgMMqtfNC8z+YyCg=
+-----END PRIVATE KEY-----
+
+
+EOF
+
+openssl verify -CAfile be-root.cert be-server.cert
+
+
+cat > be-server.cert << EOF
+-----BEGIN CERTIFICATE-----
+MIID9zCCAt+gAwIBAgIUfD4EpHeDp9OEnC6mMskn52vlmdEwDQYJKoZIhvcNAQEL
+BQAwETEPMA0GA1UEAwwGYmUtaW50MB4XDTI1MDUxOTE4NTgwM1oXDTI2MDUxOTE4
+NTgwM1owgacxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYwFAYD
+VQQHDA1TYW4gRnJhbmNpc2NvMRAwDgYDVQQKDAdleGFtcGxlMRIwEAYDVQQLDAli
+ZS1zZXJ2ZXIxHDAaBgNVBAMME2V4YW1wbGVwZXRzdG9yZS5jb20xJzAlBgkqhkiG
+9w0BCQEWGHRlc3RAZXhhbXBsZXBldHN0b3JlLmNvbTCCASIwDQYJKoZIhvcNAQEB
+BQADggEPADCCAQoCggEBAL7rM4YXWiqniNdZjTqW8l7MBuhRaNnrCDprU3MwF91h
+mEz+IwFKxfaRTOk6ppsTF8n5iXk2ThznmanVznIcdwgy47n0yqFv75FDaD9UtBNc
+cjlcYdEkgft88ACf6sB0V03zAHMXCV/ENIZyKcvvowXn07xPOlK8aZ9dByJq7OiM
+Fj5XXuvY9889k7eXYfP6wCeBcm7SJ0QLNAS0HyLWlxdt+MvWe/+I74J3sX14O+km
+xSjQRD1rg+PPn2AhS3ziIhJUg6dIxgFBqtOynN79DrfGJnEC/GLnBEERksOz3ksR
+mDpMX1s1za/J4zzK2Apb5na71qiWFZ01ulkb2+sBGTsCAwEAAaOBrzCBrDAMBgNV
+HRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIF4DATBgNVHSUEDDAKBggrBgEFBQcDATA3
+BgNVHREEMDAughNleGFtcGxlcGV0c3RvcmUuY29tghdhcGkuZXhhbXBsZXBldHN0
+b3JlLmNvbTAdBgNVHQ4EFgQU0CtlublTZzbhPoXP966xU5HKUHgwHwYDVR0jBBgw
+FoAUnyg59TpB+JsKegu1EHtdldjTvCgwDQYJKoZIhvcNAQELBQADggEBAIONSbO6
+qT+51jUp/GCpdRZyIyzsXGWPLW8LOsKaqjucrelTqMoHXOoRIKq9l8hLdRE1EYlW
+uws93Oow9WejFChndkN2DB95UE5CDmBzV0FLUcCG8O8rF78mWOllqcdrB9PDHo66
+0YlGiEUb7QylS4k4ptu4GKcj2pSWhvIl3eK88SL5Xj3gpgsisn2h4lF3E5L4L9eQ
+4LsGj6RcUvnHvePb0WuO2VXYkx1TjuptmvpqnXHQToPsYZ8mOEPdf82Tl3hkF/gI
+9W92GoUdjxsr/VRyvPyOuNRwh4m3ON6jhWZvxXQ61hTYFxreqC2QtO5446dDubL0
+SosPTo86CaZfrIg=
+-----END CERTIFICATE-----
+
+
+EOF
+
+
+sudo cp ./be-server.key /etc/ssl/private/be-server.key
+sudo cp ./be-server.cert /etc/ssl/certs/be-server.cert
+
+cat > lb-root.cert << EOF
+-----BEGIN CERTIFICATE-----
+MIIDFDCCAfygAwIBAgIUBe77F5PG3iawhhRkenqoT8Q9RGYwDQYJKoZIhvcNAQEL
+BQAwGTEXMBUGA1UEAwwOYmUtY2xpZW50LXJvb3QwHhcNMjUwNTE5MTg1ODE2WhcN
+MzUwNTE3MTg1ODE2WjAZMRcwFQYDVQQDDA5iZS1jbGllbnQtcm9vdDCCASIwDQYJ
+KoZIhvcNAQEBBQADggEPADCCAQoCggEBAMFu8k13bh8rqHOcDaovJ6nmaF2Mwc4F
+2Cl0sxB4JbHBBKox5XAflUFy/PD29lYHGgVSC4516U4arsqeqZj6RRxSjHEkVMYS
+LK/vVdrbXc6g1hjIl9/oUKIDvoUrfpRnBV0RYdqAGP/F10ouP3gulwCD+yo1rgjj
+YVpSpw6haQrE8fhcgwFUQ3aVZJQZWnOjopPHAP+6HHMNZtVIRpZ5CqiyMfIozXhm
++H5nEgB932A9e+VNUewF4GoFVLMdF4+B56JNZPI+4sWjn6ZNIyJb/CtxQLkYdpVQ
+6RlZMKbAcY9R4K+AIO9HbsR91dFmZKgU6lxt0roL4E2Wz+AE/rL9bMECAwEAAaNU
+MFIwDwYDVR0TAQH/BAUwAwEB/zALBgNVHQ8EBAMCAgQwEwYDVR0lBAwwCgYIKwYB
+BQUHAwIwHQYDVR0OBBYEFPF1fqZMUCLKsPsvGDFeGPhOeysbMA0GCSqGSIb3DQEB
+CwUAA4IBAQALGVCo4gl0Z95jd/DXDWtIIxrZC3dyoHMpBwFmHkbSey8YdPa8xmn6
+wI7R3d4oY0DbIg1i7cZUl5pn+wX0mtkz3bsKGtAdIbnMip2eaT0XNo/MAOmoVlNj
+Z7KXrsHUKiCT4Jzzz9XhrjTmtfcFYUWzIqutpWSYoB1G/tQR9nRlA62m7iMT7B3L
+Qz4t/+tYnCN5Q8jfduJ/Qzm/dKr7kLD/5tThFrsOvaoMi46+Uj5lts8wmxPCczGv
+eSUrbPS7/mdhkflUWBs/q20rdsU9czlZS0WTiyX+3hZpVUGfb6Lp1XWjhDp7zElr
+ew193o0QWK71lx+dqdPRAnkZcFndGlNe
+-----END CERTIFICATE-----
+
+
+EOF
+
+
+sudo cp ./lb-root.cert /etc/ssl/certs/lb-root.cert
+
+curl -k -v https://35.241.21.34/server.php
+
+Extract server cert
+#openssl s_client -connect 35.241.21.34:443 -showcerts
+
+## Without passing any client certs
+#curl -vv https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:107.178.246.38
+curl -v https://35.241.21.34/server.php
+# Passing only server cert
+#curl -vv https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:107.178.246.38 --cacert ../server.crt
+curl -v https://35.241.21.34/server.php --cacert ./server.crt # fails SAN check
+curl -v https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:35.241.21.34 --cacert ./server.crt
+## Passing only client cert
+#curl -vv https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:107.178.246.38 --cert client.crt --key client.key
+# curl failed to verify the legitimacy of the server and therefore could not
+# establish a secure connection to it. To learn more about this situation and
+## Passing client certificate and server
+#curl -vv https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:107.178.246.38 --cert client.crt --key client.key --cacert ../server.crt
+curl -v https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:35.241.21.34 --cert be-client.cert --key be-client.key --cacert ./server.crt
+curl -v --cert ./be-client.cert --key ./be-client.key --cacert ./server.crt https://sg-test-producer.com/server.php --resolve sg-test-producer.com:443:35.241.21.34
+
+#Update backend service
+gcloud compute backend-services update sanbk-app-bs \
+  --global \
+  --enable-logging \
+  --logging-sample-rate=1 \
+  --custom-request-header='X-Client-Cert-Present:{client_cert_present}' \
+  --custom-request-header='X-Client-Cert-Chain-Verified:{client_cert_chain_verified}' \
+  --custom-request-header='X-Client-Cert-Error:{client_cert_error}' \
+  --custom-request-header='X-Client-Cert-Hash:{client_cert_sha256_fingerprint}' \
+  --custom-request-header='X-Client-Cert-Serial-Number:{client_cert_serial_number}' \
+  --custom-request-header='X-Client-Cert-SPIFFE:{client_cert_spiffe_id}' \
+  --custom-request-header='X-Client-Cert-URI-SANs:{client_cert_uri_sans}' \
+  --custom-request-header='X-Client-Cert-DNSName-SANs:{client_cert_dnsname_sans}' \
+  --custom-request-header='X-Client-Cert-Valid-Not-Before:{client_cert_valid_not_before}' \
+  --custom-request-header='X-Client-Cert-Valid-Not-After:{client_cert_valid_not_after}' \

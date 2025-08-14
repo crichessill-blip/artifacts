@@ -1,0 +1,9 @@
+ Security and State Files
+*.cert
+*.crt
+*.key
+*.tfstate
+*.tfstate.backup
+*.lock.hcl
+# Exclude the entire terraform directory
+**/.terraform/
