@@ -5,5 +5,7 @@
 *.tfstate
 *.tfstate.backup
 *.lock.hcl
+*.pem
 # Exclude the entire terraform directory
 **/.terraform/
+**/.DS_Store
