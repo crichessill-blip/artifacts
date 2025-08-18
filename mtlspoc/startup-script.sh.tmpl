@@ -35,19 +35,14 @@ sudo cp ./be-server.cert /etc/ssl/certs/be-server.cert
 sudo cp ./lb-root.cert /etc/ssl/certs/be-client-root.cert
 
 
-sudo tee -a /etc/apache2/sites-available/default-ssl.conf > /dev/null <<EOF
+sudo sed -i '/<\/VirtualHost>/i \
+SSLCertificateFile /etc/ssl/certs/be-server.cert\n\
+SSLCertificateKeyFile /etc/ssl/private/be-server.key\n\
+SSLVerifyClient require\n\
+SSLVerifyDepth 5\n\
+SSLCACertificateFile /etc/ssl/certs/be-client-root.cert' \
+/etc/apache2/sites-available/default-ssl.conf
 
-# Server certificate and key
-SSLCertificateFile      /etc/ssl/certs/be-server.cert
-SSLCertificateKeyFile   /etc/ssl/private/be-server.key
-SSLOptions +StdEnvVars +ExportCertData
-
-# Client certificate verification
-SSLVerifyClient require
-LogLevel ssl:debug
-SSLVerifyDepth 5
-SSLCACertificateFile /etc/ssl/certs/be-client-root.cert
-EOF
 
 sudo c_rehash /etc/ssl/certs/
 sudo systemctl restart apache2.service

@@ -8,6 +8,8 @@ This README file provides instructions for setting up and testing a frontend ser
 
 First, navigate to the `frontendmtls` directory and deploy the infrastructure using Terraform.
 
+Create/ modify terraform.tfvars file accordingly
+
 1.  **Open the directory:**
     ```bash
     cd frontendmtls
@@ -33,7 +35,7 @@ Once the infrastructure is deployed, get the IP address of the forwarding rule.
 
   * **Run the following command:**
     ```bash
-    gcloud compute forwarding-rules describe sanalt-fr --global --project=santest-1
+    gcloud compute forwarding-rules describe sanalt1-fr --global --project=santest-1
     ```
     For example
     ```bash
@@ -47,7 +49,9 @@ Next, you need to obtain the server's SSL certificate to establish trust.
 
   * **Run the following command to get the `server.crt` file by inputting the forwarding rule IP from previous step:**
     ```bash
-    openssl s_client -connect 34.107.136.149:443 -showcerts > server.crt
+    openssl s_client -connect 34.107.136.149:443 -servername san-gxlb.com -showcerts </dev/null \
+  2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > server.crt
+
     ```
 
 -----
