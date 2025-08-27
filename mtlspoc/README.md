@@ -6,13 +6,13 @@ This README file provides instructions for setting up and testing a frontend ser
 
 ### 1\. Terraform Deployment
 
-First, navigate to the `frontendmtls` directory and deploy the infrastructure using Terraform.
+First, navigate to the `frontend` directory and deploy the infrastructure using Terraform.
 
 Create/ modify terraform.tfvars file accordingly
 
 1.  **Open the directory:**
     ```bash
-    cd frontendmtls
+    cd frontend
     ```
 2.  **Run Terraform apply:**
     ```bash
@@ -35,11 +35,11 @@ Once the infrastructure is deployed, get the IP address of the forwarding rule.
 
   * **Run the following command:**
     ```bash
-    gcloud compute forwarding-rules describe sanalt1-fr --global --project=santest-1
+    gcloud compute forwarding-rules describe FORWARDINGRULE_NAME --global --project=PROJECT_ID
     ```
     For example
     ```bash
-    gcloud compute forwarding-rules describe FORWARDINGRULE_NAME --global --project=PROJECT_ID
+    gcloud compute forwarding-rules describe sanalt1-fr --global --project=santest-1
     ```
 -----
 
